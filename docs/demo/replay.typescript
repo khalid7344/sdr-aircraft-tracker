@@ -1,0 +1,76 @@
+Script started on 2026-11-15 21:24:29-05:00 [COMMAND="stty cols 140 rows 32; ./bin/sdr-tracker --mode=replay --replay-file=testdata/sample_frames.avr --replay-interval=50ms" TERM="xterm-256color" TTY="/dev/console" COLUMNS="80" LINES="24"]
+]10;?\[6n]11;?\[6n[?25l[?1049h[2J[1;1H[1;1H[?25l SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 0s
+Frames: 1 | DF17: 1 | CRC Err: 0 | Positions: 0 | Rejects: 0 | Dropped: 0
+
+ ICAO     CALLSIGN   ALT(ft) SPEED(kt) TRACK(°)         LAT         LON    MSGS  AGE(s) 
+ No active aircraft detected. Ingesting telemetry... 
+
+Sort: Seen (Key: [a] Alt, [m] Msgs, [s] Seen) | [q] Quit
+[8;0H[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 0s
+Frames: 5 | DF17: 4 | CRC Err: 0 | Positions: 1 | Rejects: 0 | Dropped: 0
+
+ ICAO     CALLSIGN   ALT(ft) SPEED(kt) TRACK(°)         LAT         LON    MSGS  AGE(s) 
+ 485020   —                —     159.2    182.9           —           —       1       0 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       0 
+ 4840D6   KLM1023          —         —        —           —           —       1       0 
+
+Sort: Seen (Key: [a] Alt, [m] Msgs, [s] Seen) | [q] Quit
+[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[2K[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 1s
+Frames: 9 | DF17: 4 | CRC Err: 0 | Positions: 1 | Rejects: 0 | Dropped: 0
+[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 1s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       1 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 1s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       1 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       1 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 2s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 2s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       2 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 2s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       2 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       2 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 3s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 3s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       3 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 3s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       3 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       3 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 4s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 4s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       4 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 4s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       4 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       4 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 5s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 5s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       5 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 5s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       5 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       5 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 6s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 6s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       6 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 6s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       6 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       6 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 7s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 7s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       7 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 7s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       7 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       7 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 8s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 8s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       8 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 8s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       8 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       8 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 9s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[1A[1A[1A[2K[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 9s
+[1B[1B[1B[1B[1B 4840D6   KLM1023          —         —        —           —           —       1       9 
+[1B[1B[10;0H[1A[1A[1A[1A[2K[1A[2K[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 9s
+[1B[1B[1B 485020   —                —     159.2    182.9           —           —       1       9 
+ 40621D   —            38000         —        —     52.2658      3.9389       2       9 
+[1B[1B[1B[10;0H[1A[1A[1A[1A[1A[1A[1A[1A[1A[140D[2K SDR AIRCRAFT TRACKER   Mode: REPLAY (testdata/sample_frames.avr)  Status: REPLAYING  Uptime: 10s
+[1B[1B[1B[1B[1B[1B[1B[1B[10;0H[2K[?25h[?1002l[?1003l[?1006l[?1049l[?25hsdr-tracker: shutdown complete
+
+Script done on 2026-11-15 21:24:38-05:00 [COMMAND_EXIT_CODE="0"]

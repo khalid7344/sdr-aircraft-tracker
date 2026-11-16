@@ -1,0 +1,12 @@
+{
+  "total_frames": 9,
+  "malformed_frames": 3,
+  "non_df17_frames": 2,
+  "crc_failed_frames": 0,
+  "valid_df17_frames": 4,
+  "cpr_positions_solved": 1,
+  "plausibility_rejects": 0,
+  "dropped_frames": 0,
+  "reconnect_count": 0,
+  "connected": false
+}

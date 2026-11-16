@@ -53,39 +53,42 @@ A high-performance, real-time Mode S / ADS-B decoding, Compact Position Reportin
    * **Global Compact Position Reporting (CPR) Solver:** Implementation of ICAO Doc 9871 17-bit latitude zone ($N_z = 15$) and longitude resolution across Even and Odd frame pairs with strict zone consistency verification ($NL(\text{lat}_{\text{even}}) == NL(\text{lat}_{\text{odd}})$).
    * **Concurrent Kinematic State Engine:** Thread-safe state tracking protected by `sync.RWMutex`, enforcing $\le 10\text{s}$ Even/Odd correlation windows, speed limit checks ($\le 1200\text{ kt}$), and great-circle Haversine jump filtering to prevent telemetry anomalies.
    * **Interactive Terminal User Interface:** Responsive, flicker-free dashboard built on Charm's Bubble Tea and Lipgloss, decoupled from packet ingestion via snapshot polling.
-   * **Structured Telemetry Archival:** Asynchronous, non-blocking structured JSON event output via Go's `log/slog`.
+   * **Lifecycle Logging:** Optional synchronous JSON startup/shutdown logs via Go's `log/slog`; decoded aircraft archival is not implemented.
 
 ---
 
 ## Measured Performance Benchmarks
 
-Microbenchmarks executed on **AMD Ryzen 7 7700 8-Core Processor (Linux amd64)** using `go test -bench=. -benchmem`:
+Microbenchmarks rerun during the audit on Linux amd64, AMD Ryzen 7 7700,
+Go 1.27.3, with `go test -run '^$' -bench=. -benchtime=100ms -benchmem ./internal/adsb ./internal/tracker`:
 
-| Benchmark | Operations | Latency (`ns/op`) | Memory (`B/op`) | Allocs (`allocs/op`) |
-|---|---|---|---|---|
-| `BenchmarkCRC24` | 210,288,542 | **5.88 ns/op** | 0 B/op | **0 allocs/op** |
-| `BenchmarkCRC24Bitwise` | 10,081,108 | 120.2 ns/op | 0 B/op | **0 allocs/op** |
-| `BenchmarkDecodeDF17` | 136,823,047 | **10.68 ns/op** | 0 B/op | **0 allocs/op** |
-| `BenchmarkProcessRawHex` | 25,201,671 | **44.36 ns/op** | 0 B/op | **0 allocs/op** |
-| `BenchmarkGlobalCPR` | 17,377,670 | **65.72 ns/op** | 0 B/op | **0 allocs/op** |
-| `BenchmarkTrackerUpdate` | 87,484,962 | **11.66 ns/op** | 0 B/op | **0 allocs/op** |
-| `BenchmarkTrackerSnapshot` (100 aircraft) | 442,500 | 2,751 ns/op | 27,264 B/op | 1 allocs/op |
+| Benchmark | ns/op | B/op | allocs/op |
+|---|---:|---:|---:|
+| CRC24 | 5.759 | 0 | 0 |
+| CRC24Bitwise | 119.1 | 0 | 0 |
+| DecodeDF17 (position frame) | 8.962 | 0 | 0 |
+| ProcessRawHex (position frame) | 40.25 | 0 | 0 |
+| GlobalCPR | 74.72 | 0 | 0 |
+| TrackerUpdate (existing aircraft) | 9.196 | 0 | 0 |
+| TrackerSnapshot (100 aircraft) | 2592 | 27264 | 1 |
 
-* **Zero-Allocation Hot Path:** Full frame verification, decoding, and state repository insertion executes with **0 heap allocations**.
-* **Throughput:** A single CPU core processes raw hex frames at $> 22\text{ million frames/second}$ ($\approx 44\text{ ns/frame}$), exceeding the $5\text{ }\mu\text{s}$ real-time budget by over $100\times$.
+These are isolated microbenchmarks, not end-to-end throughput measurements.
+Identification decoding and first insertion can allocate. Results vary by host.
 
 ---
 
 ## Installation & Build
 
 ### Prerequisites
-* Go 1.22+ (`go version`)
-* Linux (AMD64 / ARM64)
+* Go: module minimum 1.22; audit executed with 1.27.3 (`go version`). CI checks the module minimum and stable Go.
+* Git for cloning; a C compiler for `go test -race` (normal static builds do not need one).
+* An interactive terminal for the TUI; use `--headless` in scripts.
+* Tested here on Pop!_OS 24.04, Linux amd64. Other platforms are unverified.
 * *(Optional for live reception)* RTL-SDR USB dongle and `dump1090` (`sudo apt install dump1090-mutability` or `dump1090-fa`)
 
 ### Compiling
 ```bash
-git clone https://github.com/byebye/sdr-aircraft-tracker.git
+git clone https://github.com/khalid7344/sdr-aircraft-tracker.git
 cd sdr-aircraft-tracker
 go build -o bin/sdr-tracker ./cmd/sdr-tracker
 ```
@@ -104,12 +107,22 @@ Replays recorded Mode S AVR frames at configurable pacing:
 # Paced replay (50ms interval) with interactive TUI:
 ./bin/sdr-tracker --mode=replay --replay-file=testdata/sample_frames.avr --replay-interval=50ms
 
-# Replay with structured JSON logging:
+# Replay with JSON lifecycle logging:
 ./bin/sdr-tracker --mode=replay --replay-file=testdata/sample_frames.avr --log-file=replay.jsonl
 ```
 
+The checked-in fixture produces 9 lines: 4 valid DF17, 2 other frames, 3 malformed,
+1 CPR position, and no dropped frames. CRC rejection is covered by unit tests.
+A missing replay file returns a nonzero exit status.
+
+See the genuine [TUI terminal recording](docs/demo/replay.typescript) and
+[recording instructions](docs/demo/README.md). It uses reference frames, not live RF.
+
 ### 2. Live RTL-SDR Tracking Mode
-Connects to a running `dump1090` instance listening on port 30002:
+Connects to a running `dump1090` instance listening on port 30002. Install and
+configure your chosen demodulator separately, including its RTL-SDR udev rules.
+Package names and options vary; check its `--help`. The command below is an
+unvalidated example, not a hardware validation result:
 
 ```bash
 # Terminal 1: Start RF demodulator
@@ -184,6 +197,30 @@ ADS-B compresses 360° spherical coordinates into 17-bit integers by dividing la
 
 ## Known Limitations & Validation Status
 
+* The audit environment forbids listening sockets: `TestTCPSourceReconnect` fails
+  with `operation not permitted`. Other tests pass with race detection. Keep the
+  complete test suite enabled in CI and rerun on an unrestricted Linux host.
+* USB access could not be initialized here. No hardware capture is available.
+* Logs contain lifecycle events only; asynchronous logging and per-aircraft JSON
+  archival remain roadmap items. TCP diagnostics currently go to stderr.
+* Replay uses arrival timestamps and blocking delivery; TCP drops frames when the
+  bounded queue fills. An overlong input line terminates replay or reconnects TCP.
+* This is an educational tracker, unsuitable for safety-critical navigation.
+
+## Security
+
+The tracker is an outbound TCP client and requires no root privileges. Trust the
+configured upstream; TCP is unencrypted. Logs and captures can reveal aircraft
+locations and observation patterns. New log files use mode 0600; existing file
+permissions are preserved. Avoid committing private captures.
+
+## Release strategy
+
+The existing local `v1.0.0` tag is preserved. These repairs are proposed for
+`v1.0.1`; no tag or GitHub release has been published by this audit. See
+[release notes](docs/RELEASE_NOTES_v1.0.1.md). Only Linux amd64 artifacts will be
+prepared, with SHA-256 checksums. Hardware and remote CI verification remain pending.
+
 * **Hardware Validation Status:** `PENDING HARDWARE RUN`. All protocol mechanics, frame parsing, CRC verification, and CPR state transitions are verified via deterministic test fixtures. Live USB RTL-SDR reception requires physical dongle connection (`0bda:2838`) and active airspace line-of-sight.
 * **Surface Position (TC 5–8):** Not implemented; MVP focuses strictly on Airborne Position (TC 9–18) and Velocity (TC 19).
 * **Single-Frame Local CPR:** Excluded to maintain deterministic spatial mathematics requiring Even/Odd pairing.
@@ -192,4 +229,4 @@ ADS-B compresses 360° spherical coordinates into 17-bit integers by dividing la
 
 ## License
 
-MIT License. See [LICENSE](file:///home/byebye/Projects/sdr-aircraft-tracker/LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
