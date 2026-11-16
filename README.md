@@ -1,5 +1,8 @@
 # SDR Aircraft Tracker
 
+[![CI](https://github.com/khalid7344/sdr-aircraft-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/khalid7344/sdr-aircraft-tracker/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A high-performance, real-time Mode S / ADS-B decoding, Compact Position Reporting (CPR) tracking, and terminal visualization system implemented natively in Go.
 
 ```text
@@ -48,10 +51,10 @@ A high-performance, real-time Mode S / ADS-B decoding, Compact Position Reportin
 
 1. **RF Front-End (`dump1090`):** Samples 1090 MHz RF over USB via `librtlsdr`, performs 2 MHz baseband filtering and pulse-position modulation (PPM) detection, emitting raw ASCII AVR hexadecimal frames (`*<HEX>;\n`) over TCP port `30002`.
 2. **Native Go Processing:**
-   * **Independent Mode S CRC-24 Engine:** Bitwise and table-driven polynomial division ($G(x) = \text{0xFFF409}$) running with zero heap allocations on 112-bit frames.
+   * **Independent Mode S CRC-24 Engine:** Bitwise and table-driven polynomial division (lower 24 polynomial coefficients: `0xFFF409`) running with zero heap allocations on 112-bit frames.
    * **Stateless DF17 Bitwise Decoder:** Extraction of 24-bit ICAO identifiers, 8-character AIS callsigns (TC 1–4), 25-ft and Gillham Gray-code barometric altitudes (TC 9–18), and subsonic/supersonic velocity vectors (TC 19).
-   * **Global Compact Position Reporting (CPR) Solver:** Implementation of ICAO Doc 9871 17-bit latitude zone ($N_z = 15$) and longitude resolution across Even and Odd frame pairs with strict zone consistency verification ($NL(\text{lat}_{\text{even}}) == NL(\text{lat}_{\text{odd}})$).
-   * **Concurrent Kinematic State Engine:** Thread-safe state tracking protected by `sync.RWMutex`, enforcing $\le 10\text{s}$ Even/Odd correlation windows, speed limit checks ($\le 1200\text{ kt}$), and great-circle Haversine jump filtering to prevent telemetry anomalies.
+   * **Global Compact Position Reporting (CPR) Solver:** Implementation of ICAO Doc 9871 17-bit CPR coordinates with latitude-zone parameter `N_z = 15` and longitude resolution across Even and Odd frame pairs with strict zone consistency verification (`NL(lat_even) == NL(lat_odd)`).
+   * **Concurrent Kinematic State Engine:** Thread-safe state tracking protected by `sync.RWMutex`, enforcing at most 10 seconds Even/Odd correlation windows, speed limit checks (at most 1200 knots), and great-circle Haversine jump filtering to prevent telemetry anomalies.
    * **Interactive Terminal User Interface:** Responsive, flicker-free dashboard built on Charm's Bubble Tea and Lipgloss, decoupled from packet ingestion via snapshot polling.
    * **Lifecycle Logging:** Optional synchronous JSON startup/shutdown logs via Go's `log/slog`; decoded aircraft archival is not implemented.
 
@@ -95,10 +98,12 @@ go build -o bin/sdr-tracker ./cmd/sdr-tracker
 
 ---
 
-## Prepared Linux amd64 archive
+## Linux amd64 release
 
-The v1.0.1 archive is prepared locally; publication and remote tag checks are pending.
-After obtaining the archive and its matching SHA256SUMS from a verified release:
+Download [v1.0.1](https://github.com/khalid7344/sdr-aircraft-tracker/releases/tag/v1.0.1):
+[Linux amd64 archive](https://github.com/khalid7344/sdr-aircraft-tracker/releases/download/v1.0.1/sdr-aircraft-tracker_v1.0.1_linux_amd64.tar.gz)
+and [SHA256SUMS](https://github.com/khalid7344/sdr-aircraft-tracker/releases/download/v1.0.1/SHA256SUMS).
+Place both files in the same directory, then verify before extracting:
 
 ```sh
 sha256sum -c SHA256SUMS
@@ -152,6 +157,8 @@ dump1090 --net --net-ro-port 30002
 ### CLI Flags
 ```text
 Usage of sdr-tracker:
+  -version
+        Print version and source commit, then exit
   -mode string
         Ingestion mode: "tcp" or "replay" (default "tcp")
   -addr string
@@ -198,31 +205,71 @@ go test -bench=. -benchmem ./internal/adsb ./internal/tracker
 
 ## Mathematical Principles & ADS-B Theory
 
-### Mode S CRC-24 Parity
-Mode S Extended Squitter transmissions protect 88 payload bits with a 24-bit Cyclic Redundancy Check using generator polynomial:
-$$G(x) = x^{24} + x^{23} + x^{22} + x^{21} + x^{20} + x^{19} + x^{18} + x^{17} + x^{16} + x^{15} + x^{14} + x^{13} + x^{12} + x^{10} + x^3 + 1$$
-In hexadecimal, this is represented as `0xFFF409`. When dividing the entire 112-bit message (payload + parity) over Galois Field $GF(2)$, the remainder for an uncorrupted DF17 frame must evaluate to exactly `0x000000`.
+### Mode S CRC-24 parity
+
+An Extended Squitter frame contains 88 payload bits and 24 parity bits. The Mode S
+generator polynomial is written below with ASCII exponents:
+
+```text
+G(x) = x^24 + x^23 + x^22 + x^21 + x^20 + x^19 + x^18 + x^17
+     + x^16 + x^15 + x^14 + x^13 + x^12 + x^10 + x^3 + 1
+```
+
+Its lower 24 coefficients are `0xFFF409`; the leading `x^24` term is implicit in
+that notation. The full 25-bit polynomial is `0x1FFF409`. Division uses `GF(2)`:
+addition and subtraction are XOR. A valid DF17 frame has a zero CRC remainder.
 
 ### Compact Position Reporting (CPR)
-ADS-B compresses 360° spherical coordinates into 17-bit integers by dividing latitude into 60 Even zones ($6.0^\circ$) and 59 Odd zones ($6.1017^\circ$), analogous to a Vernier scale. A global coordinate is resolved when an aircraft transmits both an Even and Odd frame within a strict 10-second window:
-1. Latitude index $j = \lfloor 59 \cdot Y_{\text{even}} - 60 \cdot Y_{\text{odd}} + 0.5 \rfloor$
-2. Recovered latitudes $\text{lat}_{\text{even}}$ and $\text{lat}_{\text{odd}}$ are checked against zone transitions: $NL(\text{lat}_{\text{even}}) == NL(\text{lat}_{\text{odd}})$.
-3. Longitude index $m = \lfloor X_{\text{even}} \cdot (NL - 1) - X_{\text{odd}} \cdot NL + 0.5 \rfloor$
-4. Recovered coordinates are filtered through kinematic plausibility bounds before updating state.
+
+CPR encodes latitude and longitude as 17-bit integers. With `N_z = 15`, there are
+60 even latitude zones and 59 odd zones. The tracker needs an even/odd pair received
+at most 10 seconds apart; the more recent frame determines the final position.
+
+Let `Y_even`, `Y_odd`, `X_even` and `X_odd` be encoded latitude/longitude values
+divided by `131072` (2^17). `mod` below is nonnegative modulo, and `floor` rounds
+downward:
+
+```text
+j = floor(59 * Y_even - 60 * Y_odd + 0.5)
+lat_even = (360 / 60) * (mod(j, 60) + Y_even)
+lat_odd  = (360 / 59) * (mod(j, 59) + Y_odd)
+```
+
+Latitudes at least 270 degrees are reduced by 360 degrees to recover southern
+coordinates; results outside -90..90 degrees are rejected. Both frames must have
+matching longitude-zone counts: `NL(lat_even) == NL(lat_odd)`.
+
+```text
+NL = NL(lat_even)  # equal to NL(lat_odd) for an accepted pair
+m = floor(X_even * (NL - 1) - X_odd * NL + 0.5)
+```
+
+Longitude uses `360 / max(NL - parity, 1)` degrees per zone, with `parity = 0` for
+even or `1` for odd, and the corresponding `X` value. The result is normalized to
+-180..180 degrees. The tracker applies coordinate, altitude, speed and movement
+plausibility checks before accepting updates.
 
 ---
 
-## Known Limitations & Validation Status
+## Validation and limitations
 
-* The audit environment forbids listening sockets: `TestTCPSourceReconnect` fails
-  with `operation not permitted`. Other tests pass with race detection. Keep the
-  complete test suite enabled in CI and rerun on an unrestricted Linux host.
-* USB access could not be initialized here. No hardware capture is available.
-* Logs contain lifecycle events only; asynchronous logging and per-aircraft JSON
-  archival remain roadmap items. TCP diagnostics currently go to stderr.
-* Replay uses arrival timestamps and blocking delivery; TCP drops frames when the
-  bounded queue fills. An overlong input line terminates replay or reconnects TCP.
-* This is an educational tracker, unsuitable for safety-critical navigation.
+- **Software:** deterministic reference-frame replay, CRC rejection, CPR pairing,
+  state tracking and TUI behavior have automated tests. [CI](https://github.com/khalid7344/sdr-aircraft-tracker/actions/workflows/ci.yml)
+  runs the full race suite on the module minimum and stable Go. Check the workflow
+  for the latest result. The tests require permission to open a loopback TCP listener.
+- **Hardware:** live RTL-SDR USB reception has **not been validated**. No live
+  capture is bundled. Fixture replay does not establish RF reception quality,
+  antenna performance or demodulator compatibility.
+- **Environment:** tested locally on Pop!_OS 24.04, Linux amd64. Other Linux
+  distributions and architectures are unverified; the downloadable binary is Linux
+  amd64 only.
+- **Protocol:** surface positions (TC 5-8), single-frame local CPR, MLAT, and deep
+  decoding of non-DF17 messages are not implemented.
+- **Logging:** JSON logs contain lifecycle events only. Asynchronous logging and
+  per-aircraft archival remain future work; TCP diagnostics currently use stderr.
+- **Input:** replay uses arrival timestamps and blocking delivery. TCP drops frames
+  when the bounded queue fills. An overlong line stops replay or reconnects TCP.
+- **Use:** this is an educational tracker, unsuitable for safety-critical navigation.
 
 ## Security
 
@@ -231,16 +278,14 @@ configured upstream; TCP is unencrypted. Logs and captures can reveal aircraft
 locations and observation patterns. New log files use mode 0600; existing file
 permissions are preserved. Avoid committing private captures.
 
-## Release strategy
+## Releases
 
-The existing local `v1.0.0` tag is preserved. These repairs are proposed for
-`v1.0.1`; no tag or GitHub release has been published by this audit. See
-[release notes](docs/RELEASE_NOTES_v1.0.1.md). Only Linux amd64 artifacts will be
-prepared, with SHA-256 checksums. Hardware and remote CI verification remain pending.
-
-* **Hardware Validation Status:** `PENDING HARDWARE RUN`. All protocol mechanics, frame parsing, CRC verification, and CPR state transitions are verified via deterministic test fixtures. Live USB RTL-SDR reception requires physical dongle connection (`0bda:2838`) and active airspace line-of-sight.
-* **Surface Position (TC 5–8):** Not implemented; MVP focuses strictly on Airborne Position (TC 9–18) and Velocity (TC 19).
-* **Single-Frame Local CPR:** Excluded to maintain deterministic spatial mathematics requiring Even/Odd pairing.
+[v1.0.1](https://github.com/khalid7344/sdr-aircraft-tracker/releases/tag/v1.0.1)
+contains the protocol and CLI repairs described in the [release notes](docs/RELEASE_NOTES_v1.0.1.md).
+The archive identifies source commit `95f100c666ad585e06b52d09230813aef50bb7a7`
+through `--version` and `BUILD_INFO.json`. It includes the replay fixture, project
+license and dependency notices. Check `SHA256SUMS` before running it. Later
+README changes on `main` do not replace the immutable v1.0.1 archive or tag.
 
 ---
 
