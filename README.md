@@ -32,7 +32,7 @@ A high-performance, real-time Mode S / ADS-B decoding, Compact Position Reportin
            │  - Kinematic plausibility filters   │
            │  - Background TTL inactivity reaper │
            └──────────────┬───────────────┬──────┘
-                          │ (Snapshot)    │ (JSON slog)
+                          │ (Snapshot)    │ (CLI lifecycle JSON)
                           ▼               ▼
               ┌──────────────────┐ ┌─────────────┐
               │  Bubble Tea TUI  │ │ Structured  │
@@ -47,7 +47,7 @@ A high-performance, real-time Mode S / ADS-B decoding, Compact Position Reportin
 **SDR Aircraft Tracker** follows a clean architectural separation of concerns:
 
 1. **RF Front-End (`dump1090`):** Samples 1090 MHz RF over USB via `librtlsdr`, performs 2 MHz baseband filtering and pulse-position modulation (PPM) detection, emitting raw ASCII AVR hexadecimal frames (`*<HEX>;\n`) over TCP port `30002`.
-2. **Native Go Processing (100% Original Implementation):**
+2. **Native Go Processing:**
    * **Independent Mode S CRC-24 Engine:** Bitwise and table-driven polynomial division ($G(x) = \text{0xFFF409}$) running with zero heap allocations on 112-bit frames.
    * **Stateless DF17 Bitwise Decoder:** Extraction of 24-bit ICAO identifiers, 8-character AIS callsigns (TC 1–4), 25-ft and Gillham Gray-code barometric altitudes (TC 9–18), and subsonic/supersonic velocity vectors (TC 19).
    * **Global Compact Position Reporting (CPR) Solver:** Implementation of ICAO Doc 9871 17-bit latitude zone ($N_z = 15$) and longitude resolution across Even and Odd frame pairs with strict zone consistency verification ($NL(\text{lat}_{\text{even}}) == NL(\text{lat}_{\text{odd}})$).
@@ -94,6 +94,23 @@ go build -o bin/sdr-tracker ./cmd/sdr-tracker
 ```
 
 ---
+
+## Prepared Linux amd64 archive
+
+The v1.0.1 archive is prepared locally; publication and remote tag checks are pending.
+After obtaining the archive and its matching SHA256SUMS from a verified release:
+
+```sh
+sha256sum -c SHA256SUMS
+tar -xzf sdr-aircraft-tracker_v1.0.1_linux_amd64.tar.gz
+cd sdr-aircraft-tracker_v1.0.1_linux_amd64
+./sdr-tracker --version
+./sdr-tracker --mode=replay --replay-file=testdata/sample_frames.avr --replay-interval=0 --headless
+```
+
+The archive includes the replay fixture, documentation, project license, dependency
+notices and build provenance. It is static Linux amd64, tested on the audit host;
+no other platform compatibility or physical RTL-SDR validation is asserted.
 
 ## Usage
 
@@ -230,3 +247,14 @@ prepared, with SHA-256 checksums. Hardware and remote CI verification remain pen
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+## Troubleshooting
+
+- **No terminal:** use `--headless`; interactive mode needs a real terminal.
+- **Missing replay file:** run from the project/extracted archive root and pass the
+  fixture path shown above. The command exits nonzero when the source cannot open.
+- **No live aircraft:** check your demodulator's raw AVR TCP output and antenna;
+  the Go process does not access USB directly. Hardware reception is unvalidated.
+- **TCP connection refused:** confirm the configured address and upstream raw port.
+  The client retries with bounded backoff until canceled.
+- **Source archive build lacks Git metadata:** add `-buildvcs=false` to `go build`.

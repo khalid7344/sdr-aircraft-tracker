@@ -33,6 +33,14 @@ DF17, 2 non-DF17, 3 malformed, 1 CPR solution, 0 drops. Both TUI fixture renderi
 and q-to-quit were exercised in a real pseudo-terminal recording. No live SDR
 capture exists. USB could not be initialized. **PENDING HARDWARE RUN**.
 
+## Completion follow-up
+
+Added a release --version flag reporting version and exact source commit. The
+release archive now includes the documented replay fixture and complete referenced
+documentation. Dependency notices cover all go.mod requirements, including platform
+specific dependencies, without relicensing them. Publication is explicitly authorized
+by the owner; working GitHub access and remote release/tag checks remain required.
+
 ## Remaining limitations and release
 
 Only Linux amd64 was built and smoke-tested. Live demodulator commands remain

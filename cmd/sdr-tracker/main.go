@@ -23,6 +23,10 @@ import (
 	"github.com/khalid7344/sdr-aircraft-tracker/internal/tui"
 )
 
+// Set by the release build; ordinary source builds identify as development.
+var version = "development"
+var commit = "unknown"
+
 func main() {
 	if err := run(os.Args[1:]); err != nil && !errors.Is(err, flag.ErrHelp) {
 		fmt.Fprintf(os.Stderr, "sdr-tracker: %v\n", err)
@@ -32,6 +36,7 @@ func main() {
 
 func run(args []string) error {
 	fs := flag.NewFlagSet("sdr-tracker", flag.ContinueOnError)
+	showVersion := fs.Bool("version", false, "Print version and source commit, then exit")
 	mode := fs.String("mode", "tcp",
 		`Ingestion mode: "tcp" or "replay"`)
 	addr := fs.String("addr", "127.0.0.1:30002",
@@ -49,6 +54,10 @@ func run(args []string) error {
 
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *showVersion {
+		fmt.Fprintf(os.Stdout, "sdr-tracker %s (%s)\n", version, commit)
+		return nil
 	}
 	if fs.NArg() != 0 || *ttl <= 0 || *replayInterval < 0 {
 		return fmt.Errorf("ttl must be positive, replay-interval nonnegative, and no positional arguments are accepted")

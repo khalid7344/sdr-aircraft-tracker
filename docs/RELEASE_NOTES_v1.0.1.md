@@ -8,6 +8,7 @@ Not published. Preserve v1.0.0 and existing history.
 - Return replay source and TUI failures to the shell; drain pipeline before shutdown.
 - Validate timing arguments; restrict newly created logs to owner access.
 - Repair clone/license links and clarify logging, benchmarks, and validation status.
+- Add --version with release version/source commit and bundle the replay fixture.
 - Add CLI and protocol regression tests; CI checks minimum and stable Go.
 
 Validation: see README and the local publication review. Full local race run is

@@ -21,3 +21,9 @@ func TestRunFixtureReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRunVersionDoesNotStartIngestion(t *testing.T) {
+	if err := run([]string{"--version"}); err != nil {
+		t.Fatal(err)
+	}
+}
