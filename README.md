@@ -5,6 +5,10 @@
 
 A high-performance, real-time Mode S / ADS-B decoding, Compact Position Reporting (CPR) tracking, and terminal visualization system implemented natively in Go.
 
+![SDR Aircraft Tracker TUI displaying reference-frame replay](docs/screenshot.png)
+
+*Genuine TUI capture from the bundled AVR reference-frame fixture; no live hardware reception is claimed.*
+
 ```text
  [RTL-SDR USB (1090 MHz)]
           │ (Raw IQ Samples via USB)
