@@ -15,7 +15,10 @@ const (
 // Returns a value between 1 and 59.
 func NL(lat float64) int {
 	absLat := math.Abs(lat)
-	if absLat >= 87.0 {
+	if absLat == 87.0 {
+		return 2
+	}
+	if absLat > 87.0 {
 		return 1
 	}
 	if absLat == 0.0 {
@@ -61,6 +64,9 @@ func cprFloorMod(x, m int) int {
 // Returns (lat, lon, true) on successful resolution, or (0, 0, false) if NL zones differ
 // or coordinates are invalid.
 func DecodeGlobalCPR(evenLatCPR, evenLonCPR, oddLatCPR, oddLonCPR uint32, oddMostRecent bool) (float64, float64, bool) {
+	if evenLatCPR >= 131072 || evenLonCPR >= 131072 || oddLatCPR >= 131072 || oddLonCPR >= 131072 {
+		return 0, 0, false
+	}
 	y0 := float64(evenLatCPR) / cprNb
 	y1 := float64(oddLatCPR) / cprNb
 

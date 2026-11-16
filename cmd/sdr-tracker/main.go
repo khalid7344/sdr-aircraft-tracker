@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,29 +24,45 @@ import (
 )
 
 func main() {
-	mode := flag.String("mode", "tcp",
+	if err := run(os.Args[1:]); err != nil && !errors.Is(err, flag.ErrHelp) {
+		fmt.Fprintf(os.Stderr, "sdr-tracker: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(args []string) error {
+	fs := flag.NewFlagSet("sdr-tracker", flag.ContinueOnError)
+	mode := fs.String("mode", "tcp",
 		`Ingestion mode: "tcp" or "replay"`)
-	addr := flag.String("addr", "127.0.0.1:30002",
+	addr := fs.String("addr", "127.0.0.1:30002",
 		"dump1090 AVR raw TCP address")
-	replayFile := flag.String("replay-file", "testdata/sample_frames.avr",
+	replayFile := fs.String("replay-file", "testdata/sample_frames.avr",
 		"Path to recorded AVR hex frame file for replay mode")
-	replayInterval := flag.Duration("replay-interval", 10*time.Millisecond,
+	replayInterval := fs.Duration("replay-interval", 10*time.Millisecond,
 		"Delay between replayed frames; 0 runs at maximum throughput")
-	headless := flag.Bool("headless", false,
+	headless := fs.Bool("headless", false,
 		"Bypass Bubble Tea TUI; print JSON metrics summary on exit")
-	ttl := flag.Duration("ttl", 60*time.Second,
+	ttl := fs.Duration("ttl", 60*time.Second,
 		"Aircraft inactivity eviction timeout")
-	logFile := flag.String("log-file", "",
+	logFile := fs.String("log-file", "",
 		"Structured JSON slog output path")
 
-	flag.Parse()
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 || *ttl <= 0 || *replayInterval < 0 {
+		return fmt.Errorf("ttl must be positive, replay-interval nonnegative, and no positional arguments are accepted")
+	}
+	if *mode != "tcp" && *mode != "replay" {
+		return fmt.Errorf("unknown mode %q", *mode)
+	}
 
 	// Configure structured slog JSON logging if requested
 	var logCloser io.Closer
 	if *logFile != "" {
-		f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
-			log.Fatalf("failed to open log-file %q: %v", *logFile, err)
+			return fmt.Errorf("open log-file %q: %w", *logFile, err)
 		}
 		logCloser = f
 		logger := slog.New(slog.NewJSONHandler(f, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -83,10 +100,13 @@ func main() {
 	}
 
 	// Source goroutine: streams frames until exhausted or canceled, then closes rawFrameCh.
+	sourceErr := make(chan error, 1)
 	go func() {
 		defer close(rawFrameCh)
-		if err := src.Run(ctx, rawFrameCh, metrics); err != nil && err != context.Canceled {
-			slog.Warn("source error", "error", err)
+		err := src.Run(ctx, rawFrameCh, metrics)
+		sourceErr <- err
+		if err != nil && !errors.Is(err, context.Canceled) {
+			cancel()
 		}
 	}()
 
@@ -110,40 +130,46 @@ func main() {
 		}
 	}()
 
+	var tuiErr error
 	if *headless {
 		// Headless mode: run until frame stream finishes or user interrupt
 		select {
 		case <-frameDone:
 		case <-ctx.Done():
 		}
+		cancel()
+		<-frameDone
 		printSummary(metrics)
 	} else {
 		// Interactive TUI mode: start Bubble Tea program
 		prog := tea.NewProgram(tui.NewModel(tr, metrics, *mode, targetAddr), tea.WithAltScreen())
 
-		// Goroutine to stop TUI if context is cancelled (e.g. SIGINT or replay done)
 		go func() {
-			select {
-			case <-frameDone:
-				if *mode == "replay" {
-					// In replay mode, leave TUI running so user can inspect, or quit if desired
-				}
-			case <-ctx.Done():
-				prog.Quit()
-			}
+			<-ctx.Done()
+			prog.Quit()
 		}()
 
 		if _, err := prog.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
+			tuiErr = fmt.Errorf("TUI: %w", err)
 		}
 		cancel()
 	}
 
+	cancel()
+	<-frameDone
+	err := <-sourceErr
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return err
+	}
+	if tuiErr != nil {
+		return tuiErr
+	}
 	slog.Info("sdr-tracker shutdown complete",
 		"total_frames", metrics.TotalFrames.Load(),
 		"valid_df17", metrics.ValidDF17Frames.Load(),
 	)
 	fmt.Fprintln(os.Stderr, "sdr-tracker: shutdown complete")
+	return nil
 }
 
 // printSummary writes a JSON object of pipeline counters to stdout.

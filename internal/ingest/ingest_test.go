@@ -345,3 +345,34 @@ func TestMetricsAtomicOperations(t *testing.T) {
 		t.Error("Connected = false, want true")
 	}
 }
+
+// net.Pipe verifies connection reads and cancellation without opening a listener.
+func TestReadConnPipeCancellation(t *testing.T) {
+	client, server := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	source := NewTCPSource("unused")
+	out := make(chan RawFrame, 1)
+	metrics := &Metrics{}
+	done := make(chan struct{})
+	go func() { defer close(done); source.readConn(ctx, client, out, metrics) }()
+	if _, err := server.Write([]byte("*8D4840D6202CC371C32CE0576098;\n")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case f := <-out:
+		if f.Hex != "8D4840D6202CC371C32CE0576098" {
+			t.Fatal(f.Hex)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("frame was not read")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("connection did not cancel")
+	}
+}

@@ -213,3 +213,32 @@ func TestProcessRawHexNonDF17AndMalformed(t *testing.T) {
 		t.Errorf("ProcessRawHex(invalid hex) status = %v, want StatusInvalidHex", status)
 	}
 }
+
+func TestAltitudeBoundariesAndGillham(t *testing.T) {
+	// Raw Gillham fields: C4 alone encodes -1200 ft; A1 plus C4 encodes 30700 ft.
+	for _, tc := range []struct {
+		raw   uint16
+		alt   int
+		valid bool
+	}{
+		{0x010, -1000, true}, {0x080, -1200, true}, {0x480, 30700, true},
+		{0xA80, 0, false}, {0x000, 0, false}, {0x800, -800, true},
+	} {
+		alt, ok := decodeAltitude(byte(tc.raw>>4), byte(tc.raw<<4))
+		if alt != tc.alt || ok != tc.valid {
+			t.Errorf("raw %03X: got %d %v, want %d %v", tc.raw, alt, ok, tc.alt, tc.valid)
+		}
+	}
+}
+
+func TestShortMalformedHexAndCPRBounds(t *testing.T) {
+	if _, status := ProcessRawHex("ZZZZZZZZZZZZZZ", time.Now()); status != StatusInvalidHex {
+		t.Fatal("accepted malformed short hex")
+	}
+	if NL(87) != 2 || NL(-87) != 2 || NL(87.001) != 1 {
+		t.Fatal("incorrect polar boundary")
+	}
+	if _, _, ok := DecodeGlobalCPR(131072, 0, 0, 0, false); ok {
+		t.Fatal("accepted out-of-range CPR")
+	}
+}

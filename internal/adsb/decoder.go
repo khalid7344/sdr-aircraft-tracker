@@ -123,6 +123,10 @@ const (
 // non-DF17 112-bit (28 char) frames, corrupted frames, and valid DF17 frames.
 func ProcessRawHex(hexStr string, receivedAt time.Time) (DecodedMessage, FrameStatus) {
 	if len(hexStr) == 14 {
+		var short [7]byte
+		if _, err := hex.Decode(short[:], []byte(hexStr)); err != nil {
+			return DecodedMessage{}, StatusInvalidHex
+		}
 		return DecodedMessage{}, StatusNonDF17
 	}
 	if len(hexStr) != 28 {
@@ -192,9 +196,6 @@ func decodeAltitude(b0, b1 byte) (int, bool) {
 		high := uint16(b0 >> 1)
 		low := uint16(b1 >> 4)
 		n := (high << 4) | low
-		if n == 0 {
-			return 0, false
-		}
 		alt := int(n)*25 - 1000
 		return alt, true
 	}
@@ -207,55 +208,22 @@ func decodeAltitude(b0, b1 byte) (int, bool) {
 
 // decodeGillham converts Gillham code to 100-foot altitude.
 func decodeGillham(raw uint16) (int, bool) {
-	// Extract Gillham bits (excluding bit 4 which was Q=0)
-	m := uint16(0)
-	m |= (raw & 0x800) >> 1 // bit 11 -> bit 10
-	m |= (raw & 0x400) >> 1 // bit 10 -> bit 9
-	m |= (raw & 0x200) >> 1 // bit 9  -> bit 8
-	m |= (raw & 0x100) >> 1 // bit 8  -> bit 7
-	m |= (raw & 0x080) >> 1 // bit 7  -> bit 6
-	m |= (raw & 0x040) >> 1 // bit 6  -> bit 5
-	m |= (raw & 0x020) >> 1 // bit 5  -> bit 4
-	m |= (raw & 0x00F)      // bit 3..0 -> bit 3..0
-
-	// Standard Gillham 100-ft decoding:
-	c1 := (m >> 4) & 1
-	a1 := (m >> 3) & 1
-	c2 := (m >> 2) & 1
-	a2 := (m >> 1) & 1
-	c4 := m & 1
-	a4 := (m >> 7) & 1
-	b1 := (m >> 6) & 1
-	b2 := (m >> 5) & 1
-	b4 := (m >> 8) & 1
-	d4 := (m >> 9) & 1
-	d2 := (m >> 10) & 1
-
-	// Gray to binary conversion for 500-ft increments
-	g500 := (d2 << 7) | (d4 << 6) | (a1 << 5) | (a2 << 4) | (a4 << 3) | (b1 << 2) | (b2 << 1) | b4
-	b500 := grayToBinary(g500)
-
-	// Gray code for 100-ft increments
-	g100 := (c1 << 2) | (c2 << 1) | c4
-	b100 := grayToBinary(g100)
-	if b100 == 0 || b100 > 4 {
+	// The 12-bit ADS-B field is C1 A1 C2 A2 C4 A4 B1 Q B2 D2 B4 D4.
+	// Reorder into the reflected Gray counters D2 D4 A1 A2 A4 B1 B2 B4 and C1 C2 C4.
+	bit := func(n uint) uint16 { return (raw >> n) & 1 }
+	g500 := bit(2)<<7 | bit(0)<<6 | bit(10)<<5 | bit(8)<<4 | bit(6)<<3 | bit(5)<<2 | bit(3)<<1 | bit(1)
+	g100 := bit(11)<<2 | bit(9)<<1 | bit(7)
+	n500, n100 := grayToBinary(g500), grayToBinary(g100)
+	if n100 == 0 || n100 == 5 || n100 == 6 {
 		return 0, false
 	}
-	if b100 == 5 || b100 == 6 {
-		return 0, false
+	if n100 == 7 {
+		n100 = 5
 	}
-
-	var offset100 int
-	if b500%2 == 1 {
-		// Decreasing order
-		offset100 = (5 - int(b100)) * 100
-	} else {
-		// Increasing order
-		offset100 = (int(b100) - 1) * 100
+	if n500%2 != 0 {
+		n100 = 6 - n100
 	}
-
-	alt := (int(b500)-2)*500 + offset100
-	return alt, true
+	return int(n500)*500 + int(n100)*100 - 1300, true
 }
 
 func grayToBinary(g uint16) uint16 {
